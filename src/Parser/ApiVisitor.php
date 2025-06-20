@@ -68,6 +68,11 @@ class ApiVisitor extends NodeVisitorAbstract
 
     private function handleClass(Node\Stmt\Class_ $node): void
     {
+        // Skip anonymous classes
+        if ($node->name === null) {
+            return;
+        }
+
         $name = $node->name->toString();
         $extends = $node->extends ? $node->extends->toString() : null;
         $implements = array_map(fn($impl) => $impl->toString(), $node->implements);

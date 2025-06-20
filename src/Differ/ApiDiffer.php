@@ -337,9 +337,6 @@ class ApiDiffer
 
     private function hasMethodSignatureChanged($oldMethod, $newMethod): bool
     {
-        $oldSignature = $oldMethod->getSignature();
-        $newSignature = $newMethod->getSignature();
-
         return $this->getEffectiveSignature($oldMethod) !== $this->getEffectiveSignature($newMethod);
     }
 
@@ -383,9 +380,8 @@ class ApiDiffer
     {
         return array_map(function ($param) {
             return [
-                'name' => $param['name'] ?? '',
                 'type' => $param['type'] ?? null,
-                'hasDefault' => isset($param['defaultValue']) && $param['defaultValue'] !== null,
+                'hasDefault' => isset($param['defaultValue']),
                 'isVariadic' => $param['isVariadic'] ?? false,
                 'byRef' => $param['byRef'] ?? false,
             ];
@@ -395,12 +391,30 @@ class ApiDiffer
     private function determineClassChangeSeverity(ClassElement $oldClass, ClassElement $newClass): string
     {
         if ($oldClass->isFinal() !== $newClass->isFinal()
-            || $oldClass->isAbstract() !== $newClass->isAbstract()
-            || $oldClass->getExtends() !== $newClass->getExtends()) {
+            || $oldClass->isAbstract() !== $newClass->isAbstract()) {
             return ApiChange::SEVERITY_MAJOR;
         }
 
+        // Changing parent class is major, but adding one is minor
+        $oldExtends = $oldClass->getExtends();
+        $newExtends = $newClass->getExtends();
+        if ($oldExtends !== $newExtends) {
+            if ($oldExtends !== null && $newExtends !== null) {
+                // Changing from one parent to another is major
+                return ApiChange::SEVERITY_MAJOR;
+            } elseif ($oldExtends !== null && $newExtends === null) {
+                // Removing parent is major
+                return ApiChange::SEVERITY_MAJOR;
+            }
+            // Adding parent (null -> something) is minor
+        }
+
         if ($oldClass->getImplements() !== $newClass->getImplements()) {
+            return ApiChange::SEVERITY_MINOR;
+        }
+
+        // If we reach here and there were inheritance changes, it's minor
+        if ($oldExtends !== $newExtends) {
             return ApiChange::SEVERITY_MINOR;
         }
 
@@ -421,6 +435,31 @@ class ApiDiffer
                 return ApiChange::SEVERITY_MAJOR;
             }
             return ApiChange::SEVERITY_MINOR;
+        }
+
+        // Check for breaking modifier changes
+        if (method_exists($oldMethod, 'isStatic') && method_exists($newMethod, 'isStatic')) {
+            if ($oldMethod->isStatic() !== $newMethod->isStatic()) {
+                return ApiChange::SEVERITY_MAJOR;
+            }
+        }
+
+        if (method_exists($oldMethod, 'isAbstract') && method_exists($newMethod, 'isAbstract')) {
+            if ($oldMethod->isAbstract() !== $newMethod->isAbstract()) {
+                return ApiChange::SEVERITY_MAJOR;
+            }
+        }
+
+        if (method_exists($oldMethod, 'isFinal') && method_exists($newMethod, 'isFinal')) {
+            if ($oldMethod->isFinal() !== $newMethod->isFinal()) {
+                return ApiChange::SEVERITY_MAJOR;
+            }
+        }
+
+        if (method_exists($oldMethod, 'getVisibility') && method_exists($newMethod, 'getVisibility')) {
+            if ($oldMethod->getVisibility() !== $newMethod->getVisibility()) {
+                return ApiChange::SEVERITY_MINOR;
+            }
         }
 
         return ApiChange::SEVERITY_PATCH;
