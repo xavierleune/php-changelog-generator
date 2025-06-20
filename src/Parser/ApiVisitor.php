@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Parser;
+namespace Leune\ChangelogGenerator\Parser;
 
 use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
-use XLeune\ChangelogGenerator\Model\ApiSnapshot;
-use XLeune\ChangelogGenerator\Model\ClassElement;
-use XLeune\ChangelogGenerator\Model\ConstantElement;
-use XLeune\ChangelogGenerator\Model\FunctionElement;
-use XLeune\ChangelogGenerator\Model\InterfaceElement;
-use XLeune\ChangelogGenerator\Model\MethodElement;
+use Leune\ChangelogGenerator\Model\ApiSnapshot;
+use Leune\ChangelogGenerator\Model\ClassElement;
+use Leune\ChangelogGenerator\Model\ConstantElement;
+use Leune\ChangelogGenerator\Model\FunctionElement;
+use Leune\ChangelogGenerator\Model\InterfaceElement;
+use Leune\ChangelogGenerator\Model\MethodElement;
 
 class ApiVisitor extends NodeVisitorAbstract
 {
@@ -136,8 +136,10 @@ class ApiVisitor extends NodeVisitorAbstract
         );
 
         if ($this->currentClass !== null) {
+            $method->setParentClass($this->currentClass->getName());
             $this->currentClass->addMethod($method);
         } elseif ($this->currentInterface !== null) {
+            $method->setParentClass($this->currentInterface->getName());
             $this->currentInterface->addMethod($method);
         }
     }
@@ -183,8 +185,10 @@ class ApiVisitor extends NodeVisitorAbstract
             );
 
             if ($this->currentClass !== null) {
+                $constant->setParentClass($this->currentClass->getName());
                 $this->currentClass->addConstant($constant);
             } elseif ($this->currentInterface !== null) {
+                $constant->setParentClass($this->currentInterface->getName());
                 $this->currentInterface->addConstant($constant);
             }
         }

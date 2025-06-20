@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Parser;
+namespace Leune\ChangelogGenerator\Parser;
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
@@ -12,7 +12,7 @@ use PhpParser\ParserFactory;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
-use XLeune\ChangelogGenerator\Model\ApiSnapshot;
+use Leune\ChangelogGenerator\Model\ApiSnapshot;
 
 class PhpParser
 {

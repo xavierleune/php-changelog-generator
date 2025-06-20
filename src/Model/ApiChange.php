@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Model;
+namespace Leune\ChangelogGenerator\Model;
 
 class ApiChange
 {

@@ -1,5 +1,5 @@
 {
-    "name": "xleune/php-changelog-generator",
+    "name": "leune/php-changelog-generator",
     "description": "PHP tool to detect API changes and generate changelog with SemVer compliance",
     "type": "library",
     "license": "MIT",
@@ -16,12 +16,12 @@
     },
     "autoload": {
         "psr-4": {
-            "XLeune\\ChangelogGenerator\\": "src/"
+            "Leune\\ChangelogGenerator\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "XLeune\\ChangelogGenerator\\Tests\\": "tests/"
+            "Leune\\ChangelogGenerator\\Tests\\": "tests/"
         }
     },
     "bin": [

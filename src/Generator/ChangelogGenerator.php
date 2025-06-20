@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Generator;
+namespace Leune\ChangelogGenerator\Generator;
 
-use XLeune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Model\ApiChange;
 
 class ChangelogGenerator
 {

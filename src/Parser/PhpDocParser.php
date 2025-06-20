@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Parser;
+namespace Leune\ChangelogGenerator\Parser;
 
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocNode;
 use PHPStan\PhpDocParser\Lexer\Lexer;

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Tests\Integration;
+namespace Leune\ChangelogGenerator\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
-use XLeune\ChangelogGenerator\Parser\PhpParser;
-use XLeune\ChangelogGenerator\Differ\ApiDiffer;
-use XLeune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
-use XLeune\ChangelogGenerator\Generator\ChangelogGenerator;
-use XLeune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Parser\PhpParser;
+use Leune\ChangelogGenerator\Differ\ApiDiffer;
+use Leune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
+use Leune\ChangelogGenerator\Generator\ChangelogGenerator;
+use Leune\ChangelogGenerator\Model\ApiChange;
 
 class EndToEndTest extends TestCase
 {
@@ -102,7 +102,7 @@ class EndToEndTest extends TestCase
         // Generate changelog
         $changelog = $this->generator->generate($changes, $recommendedVersion);
         $this->assertStringContainsString('### Added', $changelog);
-        $this->assertStringContainsString('🟡 **method** `Test\newMethod`: New method added', $changelog);
+        $this->assertStringContainsString('🟡 **method** `Test\TestClass::newMethod`: New method added', $changelog);
     }
 
     public function testCompleteWorkflowWithMajorChanges(): void

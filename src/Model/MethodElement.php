@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Model;
+namespace Leune\ChangelogGenerator\Model;
 
 class MethodElement extends ApiElement
 {
@@ -15,7 +15,8 @@ class MethodElement extends ApiElement
         private bool $isAbstract = false,
         private bool $isFinal = false,
         private string $visibility = 'public',
-        ?string $docComment = null
+        ?string $docComment = null,
+        private ?string $parentClass = null
     ) {
         $signature = [
             'parameters' => $parameters,
@@ -66,5 +67,19 @@ class MethodElement extends ApiElement
     public function isPublic(): bool
     {
         return $this->visibility === 'public';
+    }
+
+    public function getFullyQualifiedName(): string
+    {
+        if ($this->parentClass !== null) {
+            return $this->namespace . '\\' . $this->parentClass . '::' . $this->name;
+        }
+        
+        return parent::getFullyQualifiedName();
+    }
+
+    public function setParentClass(string $parentClass): void
+    {
+        $this->parentClass = $parentClass;
     }
 }

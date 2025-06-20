@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Model;
+namespace Leune\ChangelogGenerator\Model;
 
 class ConstantElement extends ApiElement
 {
@@ -11,7 +11,8 @@ class ConstantElement extends ApiElement
         string $namespace,
         private mixed $value = null,
         private ?string $type = null,
-        ?string $docComment = null
+        ?string $docComment = null,
+        private ?string $parentClass = null
     ) {
         $signature = [
             'value' => $value,
@@ -33,5 +34,19 @@ class ConstantElement extends ApiElement
     public function getValueType(): ?string
     {
         return $this->type;
+    }
+
+    public function getFullyQualifiedName(): string
+    {
+        if ($this->parentClass !== null) {
+            return $this->namespace . '\\' . $this->parentClass . '::' . $this->name;
+        }
+        
+        return parent::getFullyQualifiedName();
+    }
+
+    public function setParentClass(string $parentClass): void
+    {
+        $this->parentClass = $parentClass;
     }
 }

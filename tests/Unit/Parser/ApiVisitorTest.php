@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Tests\Unit\Parser;
+namespace Leune\ChangelogGenerator\Tests\Unit\Parser;
 
 use PhpParser\NodeTraverser;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\TestCase;
-use XLeune\ChangelogGenerator\Model\ApiSnapshot;
-use XLeune\ChangelogGenerator\Parser\ApiVisitor;
-use XLeune\ChangelogGenerator\Parser\PhpDocParser;
+use Leune\ChangelogGenerator\Model\ApiSnapshot;
+use Leune\ChangelogGenerator\Parser\ApiVisitor;
+use Leune\ChangelogGenerator\Parser\PhpDocParser;
 
 class ApiVisitorTest extends TestCase
 {

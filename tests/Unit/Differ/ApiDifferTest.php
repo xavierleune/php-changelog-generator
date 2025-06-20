@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Tests\Unit\Differ;
+namespace Leune\ChangelogGenerator\Tests\Unit\Differ;
 
 use PHPUnit\Framework\TestCase;
-use XLeune\ChangelogGenerator\Differ\ApiDiffer;
-use XLeune\ChangelogGenerator\Model\ApiChange;
-use XLeune\ChangelogGenerator\Model\ApiSnapshot;
-use XLeune\ChangelogGenerator\Model\ClassElement;
-use XLeune\ChangelogGenerator\Model\MethodElement;
-use XLeune\ChangelogGenerator\Model\FunctionElement;
-use XLeune\ChangelogGenerator\Model\ConstantElement;
+use Leune\ChangelogGenerator\Differ\ApiDiffer;
+use Leune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Model\ApiSnapshot;
+use Leune\ChangelogGenerator\Model\ClassElement;
+use Leune\ChangelogGenerator\Model\MethodElement;
+use Leune\ChangelogGenerator\Model\FunctionElement;
+use Leune\ChangelogGenerator\Model\ConstantElement;
 
 class ApiDifferTest extends TestCase
 {

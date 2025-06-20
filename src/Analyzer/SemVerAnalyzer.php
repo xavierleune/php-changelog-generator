@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Analyzer;
+namespace Leune\ChangelogGenerator\Analyzer;
 
-use XLeune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Model\ApiChange;
 
 class SemVerAnalyzer
 {

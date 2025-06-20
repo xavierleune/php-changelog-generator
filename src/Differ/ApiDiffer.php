@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Differ;
+namespace Leune\ChangelogGenerator\Differ;
 
-use XLeune\ChangelogGenerator\Model\ApiChange;
-use XLeune\ChangelogGenerator\Model\ApiElement;
-use XLeune\ChangelogGenerator\Model\ApiSnapshot;
-use XLeune\ChangelogGenerator\Model\ClassElement;
-use XLeune\ChangelogGenerator\Model\InterfaceElement;
+use Leune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Model\ApiElement;
+use Leune\ChangelogGenerator\Model\ApiSnapshot;
+use Leune\ChangelogGenerator\Model\ClassElement;
+use Leune\ChangelogGenerator\Model\InterfaceElement;
 
 class ApiDiffer
 {

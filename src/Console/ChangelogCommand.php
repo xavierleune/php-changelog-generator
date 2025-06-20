@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Console;
+namespace Leune\ChangelogGenerator\Console;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -10,10 +10,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use XLeune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
-use XLeune\ChangelogGenerator\Differ\ApiDiffer;
-use XLeune\ChangelogGenerator\Generator\ChangelogGenerator;
-use XLeune\ChangelogGenerator\Parser\PhpParser;
+use Leune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
+use Leune\ChangelogGenerator\Differ\ApiDiffer;
+use Leune\ChangelogGenerator\Generator\ChangelogGenerator;
+use Leune\ChangelogGenerator\Parser\PhpParser;
 
 class ChangelogCommand extends Command
 {

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace XLeune\ChangelogGenerator\Tests\Unit\Analyzer;
+namespace Leune\ChangelogGenerator\Tests\Unit\Analyzer;
 
 use PHPUnit\Framework\TestCase;
-use XLeune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
-use XLeune\ChangelogGenerator\Model\ApiChange;
-use XLeune\ChangelogGenerator\Model\MethodElement;
+use Leune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
+use Leune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Model\MethodElement;
 
 class SemVerAnalyzerTest extends TestCase
 {
