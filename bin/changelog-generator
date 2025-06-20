@@ -1,0 +1,12 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use XLeune\ChangelogGenerator\Console\ChangelogCommand;
+use Symfony\Component\Console\Application;
+
+$application = new Application('PHP Changelog Generator', '1.0.0');
+$application->add(new ChangelogCommand());
+$application->setDefaultCommand('changelog:generate', true);
+$application->run();

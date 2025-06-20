@@ -1,0 +1,63 @@
+<?php
+
+declare(strict_types=1);
+
+namespace XLeune\ChangelogGenerator\Model;
+
+class ApiSnapshot
+{
+    private array $classes = [];
+    private array $interfaces = [];
+    private array $functions = [];
+    private array $constants = [];
+
+    public function addClass(ClassElement $class): void
+    {
+        $this->classes[$class->getFullyQualifiedName()] = $class;
+    }
+
+    public function addInterface(InterfaceElement $interface): void
+    {
+        $this->interfaces[$interface->getFullyQualifiedName()] = $interface;
+    }
+
+    public function addFunction(FunctionElement $function): void
+    {
+        $this->functions[$function->getFullyQualifiedName()] = $function;
+    }
+
+    public function addConstant(ConstantElement $constant): void
+    {
+        $this->constants[$constant->getFullyQualifiedName()] = $constant;
+    }
+
+    public function getClasses(): array
+    {
+        return $this->classes;
+    }
+
+    public function getInterfaces(): array
+    {
+        return $this->interfaces;
+    }
+
+    public function getFunctions(): array
+    {
+        return $this->functions;
+    }
+
+    public function getConstants(): array
+    {
+        return $this->constants;
+    }
+
+    public function getAllElements(): array
+    {
+        return array_merge(
+            $this->classes,
+            $this->interfaces,
+            $this->functions,
+            $this->constants
+        );
+    }
+}
