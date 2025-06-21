@@ -46,9 +46,10 @@ class ApiDiffer
 
         foreach ($oldClasses as $fqn => $oldClass) {
             if (!isset($newClasses[$fqn])) {
+                $severity = $this->adjustSeverityForInternal(ApiChange::SEVERITY_MAJOR, $oldClass);
                 $changes[] = new ApiChange(
                     ApiChange::TYPE_REMOVED,
-                    ApiChange::SEVERITY_MAJOR,
+                    $severity,
                     $oldClass,
                     null,
                     "Removed class {$fqn}"
@@ -102,9 +103,10 @@ class ApiDiffer
 
         foreach ($oldInterfaces as $fqn => $oldInterface) {
             if (!isset($newInterfaces[$fqn])) {
+                $severity = $this->adjustSeverityForInternal(ApiChange::SEVERITY_MAJOR, $oldInterface);
                 $changes[] = new ApiChange(
                     ApiChange::TYPE_REMOVED,
-                    ApiChange::SEVERITY_MAJOR,
+                    $severity,
                     $oldInterface,
                     null,
                     "Removed interface {$fqn}"
@@ -148,9 +150,10 @@ class ApiDiffer
 
         foreach ($oldMethods as $name => $oldMethod) {
             if (!isset($newMethods[$name])) {
+                $severity = $this->adjustSeverityForInternal(ApiChange::SEVERITY_MAJOR, $oldMethod);
                 $changes[] = new ApiChange(
                     ApiChange::TYPE_REMOVED,
-                    ApiChange::SEVERITY_MAJOR,
+                    $severity,
                     $oldMethod,
                     null,
                     "Removed method {$oldContainer->getFullyQualifiedName()}::{$name}"
@@ -202,9 +205,10 @@ class ApiDiffer
 
         foreach ($oldFunctions as $fqn => $oldFunction) {
             if (!isset($newFunctions[$fqn])) {
+                $severity = $this->adjustSeverityForInternal(ApiChange::SEVERITY_MAJOR, $oldFunction);
                 $changes[] = new ApiChange(
                     ApiChange::TYPE_REMOVED,
-                    ApiChange::SEVERITY_MAJOR,
+                    $severity,
                     $oldFunction,
                     null,
                     "Removed function {$fqn}"
@@ -256,9 +260,10 @@ class ApiDiffer
 
         foreach ($oldConstants as $fqn => $oldConstant) {
             if (!isset($newConstants[$fqn])) {
+                $severity = $this->adjustSeverityForInternal(ApiChange::SEVERITY_MAJOR, $oldConstant);
                 $changes[] = new ApiChange(
                     ApiChange::TYPE_REMOVED,
-                    ApiChange::SEVERITY_MAJOR,
+                    $severity,
                     $oldConstant,
                     null,
                     "Removed constant {$fqn}"
@@ -273,10 +278,40 @@ class ApiDiffer
     {
         $changes = [];
 
-        if ($oldConstant->getValue() !== $newConstant->getValue()) {
+        // If @internal is removed, it's always patch regardless of other changes
+        if ($oldConstant->isInternal() && !$newConstant->isInternal()) {
+            $changes[] = new ApiChange(
+                ApiChange::TYPE_MODIFIED,
+                ApiChange::SEVERITY_PATCH,
+                $newConstant,
+                $oldConstant,
+                "Modified constant {$newConstant->getFullyQualifiedName()}"
+            );
+            return $changes;
+        }
+        
+        // If @internal is added, it's major
+        if (!$oldConstant->isInternal() && $newConstant->isInternal()) {
             $changes[] = new ApiChange(
                 ApiChange::TYPE_MODIFIED,
                 ApiChange::SEVERITY_MAJOR,
+                $newConstant,
+                $oldConstant,
+                "Modified constant {$newConstant->getFullyQualifiedName()}"
+            );
+            return $changes;
+        }
+
+        if ($oldConstant->getValue() !== $newConstant->getValue()) {
+            $severity = ApiChange::SEVERITY_MAJOR;
+            // Apply @internal rules: if any version is @internal, changes are never major
+            if ($oldConstant->isInternal() || $newConstant->isInternal()) {
+                $severity = ApiChange::SEVERITY_MINOR;
+            }
+
+            $changes[] = new ApiChange(
+                ApiChange::TYPE_MODIFIED,
+                $severity,
                 $newConstant,
                 $oldConstant,
                 "Modified constant {$newConstant->getFullyQualifiedName()}"
@@ -309,9 +344,10 @@ class ApiDiffer
 
         foreach ($oldConstants as $name => $oldConstant) {
             if (!isset($newConstants[$name])) {
+                $severity = $this->adjustSeverityForInternal(ApiChange::SEVERITY_MAJOR, $oldConstant);
                 $changes[] = new ApiChange(
                     ApiChange::TYPE_REMOVED,
-                    ApiChange::SEVERITY_MAJOR,
+                    $severity,
                     $oldConstant,
                     null,
                     "Removed constant {$oldContainer->getFullyQualifiedName()}::{$name}"
@@ -332,7 +368,8 @@ class ApiDiffer
         return $oldClass->isAbstract() !== $newClass->isAbstract()
             || $oldClass->isFinal() !== $newClass->isFinal()
             || $oldClass->getExtends() !== $newClass->getExtends()
-            || $oldClass->getImplements() !== $newClass->getImplements();
+            || $oldClass->getImplements() !== $newClass->getImplements()
+            || $oldClass->isInternal() !== $newClass->isInternal();
     }
 
     private function hasMethodSignatureChanged($oldMethod, $newMethod): bool
@@ -373,6 +410,9 @@ class ApiDiffer
             $signature['isFinal'] = $element->isFinal();
         }
 
+        // Include @internal status in signature
+        $signature['isInternal'] = $element->isInternal();
+
         return $signature;
     }
 
@@ -390,6 +430,21 @@ class ApiDiffer
 
     private function determineClassChangeSeverity(ClassElement $oldClass, ClassElement $newClass): string
     {
+        // If @internal is removed, it's always patch regardless of other changes
+        if ($oldClass->isInternal() && !$newClass->isInternal()) {
+            return ApiChange::SEVERITY_PATCH;
+        }
+        
+        // If @internal is added, it's major
+        if (!$oldClass->isInternal() && $newClass->isInternal()) {
+            return ApiChange::SEVERITY_MAJOR;
+        }
+
+        // Apply @internal rules: if any version is @internal, changes are never major
+        if ($oldClass->isInternal() || $newClass->isInternal()) {
+            return $this->determineNonMajorSeverity($oldClass, $newClass);
+        }
+
         if ($oldClass->isFinal() !== $newClass->isFinal()
             || $oldClass->isAbstract() !== $newClass->isAbstract()) {
             return ApiChange::SEVERITY_MAJOR;
@@ -423,6 +478,24 @@ class ApiDiffer
 
     private function determineMethodChangeSeverity($oldMethod, $newMethod): string
     {
+        // Check if there's an @internal annotation change
+        $internalSeverity = $this->getInternalAnnotationSeverity($oldMethod, $newMethod);
+        
+        // If @internal is removed, it's always patch regardless of other changes
+        if ($oldMethod->isInternal() && !$newMethod->isInternal()) {
+            return ApiChange::SEVERITY_PATCH;
+        }
+        
+        // If @internal is added, it's major
+        if (!$oldMethod->isInternal() && $newMethod->isInternal()) {
+            return ApiChange::SEVERITY_MAJOR;
+        }
+        
+        // Apply @internal rules: if any version is @internal, changes are never major
+        if ($oldMethod->isInternal() || $newMethod->isInternal()) {
+            return $this->determineNonMajorSeverityForMethod($oldMethod, $newMethod);
+        }
+
         $oldParams = $this->normalizeParameters($oldMethod->getParameters());
         $newParams = $this->normalizeParameters($newMethod->getParameters());
 
@@ -467,7 +540,36 @@ class ApiDiffer
 
     private function determineFunctionChangeSeverity($oldFunction, $newFunction): string
     {
-        return $this->determineMethodChangeSeverity($oldFunction, $newFunction);
+        // If @internal is removed, it's always patch regardless of other changes
+        if ($oldFunction->isInternal() && !$newFunction->isInternal()) {
+            return ApiChange::SEVERITY_PATCH;
+        }
+        
+        // If @internal is added, it's major
+        if (!$oldFunction->isInternal() && $newFunction->isInternal()) {
+            return ApiChange::SEVERITY_MAJOR;
+        }
+        
+        // Apply @internal rules: if any version is @internal, changes are never major
+        if ($oldFunction->isInternal() || $newFunction->isInternal()) {
+            return $this->determineNonMajorSeverityForMethod($oldFunction, $newFunction);
+        }
+
+        $oldParams = $this->normalizeParameters($oldFunction->getParameters());
+        $newParams = $this->normalizeParameters($newFunction->getParameters());
+
+        if ($this->isParameterChangeBreaking($oldParams, $newParams)) {
+            return ApiChange::SEVERITY_MAJOR;
+        }
+
+        if ($oldFunction->getReturnType() !== $newFunction->getReturnType()) {
+            if ($this->isReturnTypeChangeBreaking($oldFunction->getReturnType(), $newFunction->getReturnType())) {
+                return ApiChange::SEVERITY_MAJOR;
+            }
+            return ApiChange::SEVERITY_MINOR;
+        }
+
+        return ApiChange::SEVERITY_PATCH;
     }
 
     private function isParameterChangeBreaking(array $oldParams, array $newParams): bool
@@ -500,5 +602,98 @@ class ApiDiffer
         }
 
         return $oldType !== $newType;
+    }
+
+    /**
+     * Detects @internal annotation changes and returns appropriate severity
+     * Returns null if no @internal annotation change is detected
+     */
+    private function getInternalAnnotationSeverity(ApiElement $oldElement, ApiElement $newElement): ?string
+    {
+        $oldInternal = $oldElement->isInternal();
+        $newInternal = $newElement->isInternal();
+
+        if ($oldInternal !== $newInternal) {
+            if (!$oldInternal && $newInternal) {
+                // Adding @internal annotation is a major change
+                return ApiChange::SEVERITY_MAJOR;
+            } elseif ($oldInternal && !$newInternal) {
+                // Removing @internal annotation is a patch
+                return ApiChange::SEVERITY_PATCH;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Determines severity for non-major changes (when element is or was @internal)
+     */
+    private function determineNonMajorSeverity($oldElement, $newElement): string
+    {
+        // For classes, check if there are significant changes that warrant minor
+        if (method_exists($oldElement, 'getImplements')) {
+            if ($oldElement->getImplements() !== $newElement->getImplements()) {
+                return ApiChange::SEVERITY_MINOR;
+            }
+        }
+
+        if (method_exists($oldElement, 'getExtends')) {
+            if ($oldElement->getExtends() !== $newElement->getExtends()) {
+                return ApiChange::SEVERITY_MINOR;
+            }
+        }
+
+        return ApiChange::SEVERITY_PATCH;
+    }
+
+    /**
+     * Determines severity for non-major method changes (when method is or was @internal)
+     */
+    private function determineNonMajorSeverityForMethod($oldMethod, $newMethod): string
+    {
+        // Check for signature changes that would normally be major
+        $oldParams = $this->normalizeParameters($oldMethod->getParameters());
+        $newParams = $this->normalizeParameters($newMethod->getParameters());
+
+        if ($this->isParameterChangeBreaking($oldParams, $newParams)) {
+            return ApiChange::SEVERITY_MINOR;
+        }
+
+        if ($oldMethod->getReturnType() !== $newMethod->getReturnType()) {
+            return ApiChange::SEVERITY_MINOR;
+        }
+
+        // Check for modifier changes
+        if (method_exists($oldMethod, 'isStatic') && method_exists($newMethod, 'isStatic')) {
+            if ($oldMethod->isStatic() !== $newMethod->isStatic()) {
+                return ApiChange::SEVERITY_MINOR;
+            }
+        }
+
+        if (method_exists($oldMethod, 'getVisibility') && method_exists($newMethod, 'getVisibility')) {
+            if ($oldMethod->getVisibility() !== $newMethod->getVisibility()) {
+                return ApiChange::SEVERITY_MINOR;
+            }
+        }
+
+        return ApiChange::SEVERITY_PATCH;
+    }
+
+    /**
+     * Adjusts severity for @internal elements
+     */
+    private function adjustSeverityForInternal(string $defaultSeverity, ApiElement $element): string
+    {
+        if (!$element->isInternal()) {
+            return $defaultSeverity;
+        }
+
+        // @internal elements can never cause major changes
+        if ($defaultSeverity === ApiChange::SEVERITY_MAJOR) {
+            return ApiChange::SEVERITY_MINOR;
+        }
+
+        return $defaultSeverity;
     }
 }

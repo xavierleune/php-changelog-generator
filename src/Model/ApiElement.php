@@ -39,5 +39,15 @@ abstract class ApiElement
         return $this->docComment;
     }
 
+    public function isInternal(): bool
+    {
+        if ($this->docComment === null) {
+            return false;
+        }
+        
+        // Match @internal as a standalone annotation (with optional whitespace and word boundary)
+        return (bool) preg_match('/\*\s*@internal\b/', $this->docComment);
+    }
+
     abstract public function getType(): string;
 }

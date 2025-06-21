@@ -120,8 +120,11 @@ class ChangelogGenerator
         
         $severity = $this->getSeverityBadge($change->getSeverity());
         $description = $this->generateDescription($change);
+        
+        // Add @internal marker if the element is internal
+        $internalMarker = $element->isInternal() ? ' *@internal*' : '';
 
-        return "- {$severity} **{$type}** `{$name}`: {$description}\n";
+        return "- {$severity} **{$type}** `{$name}`{$internalMarker}: {$description}\n";
     }
 
     private function getSeverityBadge(string $severity): string
@@ -167,6 +170,12 @@ class ChangelogGenerator
         }
 
         $details = [];
+
+        // Analyze @internal annotation changes
+        $internalChange = $this->analyzeInternalAnnotationChange($oldElement, $element);
+        if ($internalChange) {
+            $details[] = $internalChange;
+        }
 
         // Analyze parameter changes
         if (method_exists($element, 'getParameters') && method_exists($oldElement, 'getParameters')) {
@@ -339,6 +348,22 @@ class ChangelogGenerator
                 $oldValueStr = is_string($oldValue) ? "'{$oldValue}'" : (string) $oldValue;
                 $newValueStr = is_string($newValue) ? "'{$newValue}'" : (string) $newValue;
                 return "value changed from {$oldValueStr} to {$newValueStr}";
+            }
+        }
+
+        return null;
+    }
+
+    private function analyzeInternalAnnotationChange($oldElement, $newElement): ?string
+    {
+        $oldInternal = $oldElement->isInternal();
+        $newInternal = $newElement->isInternal();
+
+        if ($oldInternal !== $newInternal) {
+            if (!$oldInternal && $newInternal) {
+                return 'marked as @internal';
+            } elseif ($oldInternal && !$newInternal) {
+                return 'no longer @internal';
             }
         }
 
