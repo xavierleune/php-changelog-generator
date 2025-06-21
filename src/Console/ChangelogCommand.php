@@ -63,8 +63,9 @@ class ChangelogCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $quiet = $output->isQuiet();
         $io = new SymfonyStyle($input, $output);
-        
+
         $oldPath = $input->getArgument('old-path');
         $newPath = $input->getArgument('new-path');
         $outputFile = $input->getOption('output');
@@ -75,26 +76,40 @@ class ChangelogCommand extends Command
         $strictSemver = $input->getOption('strict-semver');
 
         if (!is_dir($oldPath)) {
-            $io->error("Old path does not exist or is not a directory: {$oldPath}");
+            $output->writeln(
+                "<error>Old path does not exist or is not a directory: {$oldPath}</error>",
+                OutputInterface::VERBOSITY_QUIET
+            );
             return Command::FAILURE;
         }
 
         if (!is_dir($newPath)) {
-            $io->error("New path does not exist or is not a directory: {$newPath}");
+            $output->writeln(
+                "<error>New path does not exist or is not a directory: {$newPath}</error>",
+                OutputInterface::VERBOSITY_QUIET
+            );
             return Command::FAILURE;
         }
 
-        $io->title('PHP Changelog Generator');
-        $io->section('Analyzing codebases...');
+        if (!$quiet) {
+            $io->title('PHP Changelog Generator');
+            $io->section('Analyzing codebases...');
+        }
 
         try {
-            $io->text('Parsing old codebase...');
+            if (!$quiet) {
+                $io->text('Parsing old codebase...');
+            }
             $oldSnapshot = $this->parser->parseDirectory($oldPath, $ignorePatterns);
             
-            $io->text('Parsing new codebase...');
+            if (!$quiet) {
+                $io->text('Parsing new codebase...');
+            }
             $newSnapshot = $this->parser->parseDirectory($newPath, $ignorePatterns);
             
-            $io->text('Comparing versions...');
+            if (!$quiet) {
+                $io->text('Comparing versions...');
+            }
             $changes = $this->differ->diff($oldSnapshot, $newSnapshot);
 
             if (empty($changes)) {
@@ -112,31 +127,37 @@ class ChangelogCommand extends Command
             );
             $severity = $this->semVerAnalyzer->analyzeSeverity($changes, $currentVersion, $strictSemver);
 
-            $io->definitionList(
-                ['Current Version' => $currentVersion],
-                ['Recommended Version' => $recommendedVersion],
-                ['Severity' => ucfirst($severity)]
-            );
+            if (!$quiet) {
+                $io->definitionList(
+                    ['Current Version' => $currentVersion],
+                    ['Recommended Version' => $recommendedVersion],
+                    ['Severity' => ucfirst($severity)]
+                );
+            }
 
             $changesByType = $this->groupChangesByType($changes);
-            
-            if (!empty($changesByType['major'])) {
-                $io->warning(sprintf('⚠️  %d BREAKING changes detected', count($changesByType['major'])));
-            }
-            
-            if (!empty($changesByType['minor'])) {
-                $io->note(sprintf('ℹ️  %d new features added', count($changesByType['minor'])));
-            }
-            
-            if (!empty($changesByType['patch'])) {
-                $io->text(sprintf('✅ %d patch-level changes', count($changesByType['patch'])));
+
+            if (!$quiet) {
+                if (!empty($changesByType['major'])) {
+                    $io->warning(sprintf('⚠️  %d BREAKING changes detected', count($changesByType['major'])));
+                }
+
+                if (!empty($changesByType['minor'])) {
+                    $io->note(sprintf('ℹ️  %d new features added', count($changesByType['minor'])));
+                }
+
+                if (!empty($changesByType['patch'])) {
+                    $io->text(sprintf('✅ %d patch-level changes', count($changesByType['patch'])));
+                }
             }
 
             if ($format === 'markdown') {
                 if ($dryRun) {
-                    $changelog = $this->generator->generate($changes, $recommendedVersion);
-                    $io->section('Generated Changelog');
-                    $io->text($changelog);
+                    if (!$quiet) {
+                        $changelog = $this->generator->generate($changes, $recommendedVersion);
+                        $io->section('Generated Changelog');
+                        $io->text($changelog);
+                    }
                 } else {
                     $changelog = $this->generator->generateForFile($changes, $recommendedVersion, $outputFile);
                     file_put_contents($outputFile, $changelog);
@@ -153,17 +174,27 @@ class ChangelogCommand extends Command
                 $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
                 
                 if ($dryRun) {
-                    $io->section('Generated JSON');
-                    $io->text($json);
+                    if (!$quiet) {
+                        $io->section('Generated JSON');
+                        $io->text($json);
+                    }
                 } else {
                     file_put_contents($outputFile, $json);
-                    $io->success("JSON report written to: {$outputFile}");
+                    if (!$quiet) {
+                        $io->success("JSON report written to: {$outputFile}");
+                    }
                 }
             }
-
+            if ($quiet) {
+                $output->writeln($recommendedVersion, OutputInterface::VERBOSITY_QUIET);
+            }
             return Command::SUCCESS;
         } catch (\Throwable $e) {
-            $io->error('An error occurred: ' . $e->getMessage());
+            $output->writeln(
+                '<error>An error occured: ' . $e->getMessage() . '</error>',
+                OutputInterface::VERBOSITY_QUIET
+            );
+            dd('coucou');
             if ($output->isVerbose()) {
                 $io->text($e->getTraceAsString());
             }

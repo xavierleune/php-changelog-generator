@@ -36,12 +36,13 @@ Arguments:
   new-path              Path to the new version of the codebase
 
 Options:
-  -o, --output=OUTPUT   Output file for the changelog [default: "CHANGELOG.md"]
-  -v, --version=VERSION Current version number [default: "1.0.0"]
-  -i, --ignore=IGNORE   Patterns to ignore (supports wildcards) [default: ["*/vendor/*", "*/tests/*", "*/test/*"]] (multiple values allowed)
-  -f, --format=FORMAT   Output format (markdown, json) [default: "markdown"]
-      --dry-run         Show changes without writing to file
-      --strict-semver   Use strict SemVer rules (breaking changes = major even for pre-1.0.0)
+  -o, --output=OUTPUT            Output file for the changelog [default: "CHANGELOG.md"]
+  -c, --current-version=VERSION  Current version number [default: "1.0.0"]
+  -i, --ignore=IGNORE            Patterns to ignore (supports wildcards) [default: ["*/vendor/*", "*/tests/*", "*/test/*"]] (multiple values allowed)
+  -f, --format=FORMAT            Output format (markdown, json) [default: "markdown"]
+      --dry-run                  Show changes without writing to file
+      --strict-semver            Use strict SemVer rules (breaking changes = major even for pre-1.0.0)
+  -q, --quiet                    Shows only recommended version and/or errors
 ```
 
 ### Examples
