@@ -194,7 +194,7 @@ class ChangelogCommand extends Command
                 '<error>An error occured: ' . $e->getMessage() . '</error>',
                 OutputInterface::VERBOSITY_QUIET
             );
-            dd('coucou');
+
             if ($output->isVerbose()) {
                 $io->text($e->getTraceAsString());
             }
