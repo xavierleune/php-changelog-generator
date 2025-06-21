@@ -1,5 +1,5 @@
 {
-    "name": "leune/php-changelog-generator",
+    "name": "xavierleune/php-changelog-generator",
     "description": "PHP tool to detect API changes and generate changelog with SemVer compliance",
     "type": "library",
     "license": "MIT",
@@ -29,9 +29,15 @@
     ],
     "scripts": {
         "test": "phpunit",
-        "phpstan": "phpstan analyse",
+        "phpstan": "phpstan analyse src/ --level=1",
         "cs-check": "phpcs --standard=PSR2 src/",
-        "cs-fix": "phpcbf --standard=PSR2 src/"
+        "cs-fix": "phpcbf --standard=PSR2 src/",
+        "build-phar": "php build-phar.php",
+        "ci": [
+            "@test",
+            "@phpstan",
+            "@cs-check"
+        ]
     },
     "config": {
         "sort-packages": true

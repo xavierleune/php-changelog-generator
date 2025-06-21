@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, phar
+          ini-values: phar.readonly=Off
+          
+      - name: Install dependencies
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+        
+      - name: Build PHAR
+        run: php build-phar.php
+        
+      - name: Test PHAR
+        run: |
+          ./changelog-generator.phar --help
+          
+      - name: Get tag name
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: Release ${{ steps.tag.outputs.tag }}
+          body: |
+            ## Changes in ${{ steps.tag.outputs.tag }}
+            
+            ### Download
+            
+            - **PHAR Archive**: Download the `changelog-generator.phar` file below
+            - **Composer**: `composer global require leune/php-changelog-generator`
+            
+            ### Usage
+            
+            ```bash
+            # Using PHAR
+            php changelog-generator.phar /path/to/old /path/to/new
+            
+            # Using Composer global install
+            changelog-generator /path/to/old /path/to/new
+            ```
+            
+            See the [README](https://github.com/${{ github.repository }}/blob/${{ steps.tag.outputs.tag }}/README.md) for detailed usage instructions.
+          draft: false
+          prerelease: false
+          
+      - name: Upload PHAR
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./changelog-generator.phar
+          asset_name: changelog-generator.phar
+          asset_content_type: application/octet-stream
+          
+      - name: Upload PHAR SHA256
+        run: |
+          sha256sum changelog-generator.phar > changelog-generator.phar.sha256
+          
+      - name: Upload SHA256
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./changelog-generator.phar.sha256
+          asset_name: changelog-generator.phar.sha256
+          asset_content_type: text/plain

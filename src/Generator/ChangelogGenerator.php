@@ -11,36 +11,76 @@ class ChangelogGenerator
     public function generate(array $changes, string $version, ?string $date = null): string
     {
         $date = $date ?? date('Y-m-d');
-        $changelog = "# Changelog\n\n";
-        $changelog .= "## [{$version}] - {$date}\n\n";
+        $newEntry = $this->generateVersionEntry($changes, $version, $date);
+        
+        return "# Changelog\n\n" . $newEntry;
+    }
 
+    public function generateForFile(array $changes, string $version, string $outputFile, ?string $date = null): string
+    {
+        $date = $date ?? date('Y-m-d');
+        $newEntry = $this->generateVersionEntry($changes, $version, $date);
+        
+        if (!file_exists($outputFile)) {
+            // Create new file with title and new entry
+            return "# Changelog\n\n" . $newEntry;
+        }
+        
+        // File exists, insert after title
+        $existingContent = file_get_contents($outputFile);
+        
+        // Find the title line and insert after it
+        $lines = explode("\n", $existingContent);
+        $insertIndex = 0;
+        
+        // Find where to insert (after # Changelog title and any empty lines)
+        for ($i = 0; $i < count($lines); $i++) {
+            if (preg_match('/^#\s+Changelog/i', trim($lines[$i]))) {
+                // Found the title, skip any following empty lines
+                $insertIndex = $i + 1;
+                while ($insertIndex < count($lines) && trim($lines[$insertIndex]) === '') {
+                    $insertIndex++;
+                }
+                break;
+            }
+        }
+        
+        // Insert the new entry
+        array_splice($lines, $insertIndex, 0, [$newEntry]);
+        
+        return implode("\n", $lines);
+    }
+
+    private function generateVersionEntry(array $changes, string $version, string $date): string
+    {
+        $entry = "## [{$version}] - {$date}\n\n";
         $grouped = $this->groupChangesByType($changes);
 
         if (!empty($grouped['added'])) {
-            $changelog .= "### Added\n\n";
+            $entry .= "### Added\n\n";
             foreach ($grouped['added'] as $change) {
-                $changelog .= $this->formatChange($change);
+                $entry .= $this->formatChange($change);
             }
-            $changelog .= "\n";
+            $entry .= "\n";
         }
 
         if (!empty($grouped['modified'])) {
-            $changelog .= "### Changed\n\n";
+            $entry .= "### Changed\n\n";
             foreach ($grouped['modified'] as $change) {
-                $changelog .= $this->formatChange($change);
+                $entry .= $this->formatChange($change);
             }
-            $changelog .= "\n";
+            $entry .= "\n";
         }
 
         if (!empty($grouped['removed'])) {
-            $changelog .= "### Removed\n\n";
+            $entry .= "### Removed\n\n";
             foreach ($grouped['removed'] as $change) {
-                $changelog .= $this->formatChange($change);
+                $entry .= $this->formatChange($change);
             }
-            $changelog .= "\n";
+            $entry .= "\n";
         }
 
-        return $changelog;
+        return $entry;
     }
 
     private function groupChangesByType(array $changes): array

@@ -122,12 +122,12 @@ class ChangelogCommand extends Command
             }
 
             if ($format === 'markdown') {
-                $changelog = $this->generator->generate($changes, $recommendedVersion);
-                
                 if ($dryRun) {
+                    $changelog = $this->generator->generate($changes, $recommendedVersion);
                     $io->section('Generated Changelog');
                     $io->text($changelog);
                 } else {
+                    $changelog = $this->generator->generateForFile($changes, $recommendedVersion, $outputFile);
                     file_put_contents($outputFile, $changelog);
                     $io->success("Changelog written to: {$outputFile}");
                 }

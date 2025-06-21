@@ -1,1 +1,29 @@
-vendor/
+# Dependencies
+/vendor/
+composer.lock
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PHPUnit
+/.phpunit.cache/
+/coverage/
+coverage.xml
+.phpunit.result.cache
+
+# Build artifacts
+*.phar
+*.phar.sha256
+
+# Logs
+*.log
+
+# Cache
+.cache/
