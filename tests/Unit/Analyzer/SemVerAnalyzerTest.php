@@ -122,12 +122,16 @@ class SemVerAnalyzerTest extends TestCase
         // Version with only major number
         $this->assertEquals('0.0.1', $this->analyzer->getRecommendedVersion('0', $patchChanges));
         $this->assertEquals('0.1.0', $this->analyzer->getRecommendedVersion('0', $minorChanges));
-        $this->assertEquals('1.0.0', $this->analyzer->getRecommendedVersion('0', $majorChanges));
+        // For pre-1.0.0, major changes become minor unless strict mode is used
+        $this->assertEquals('0.1.0', $this->analyzer->getRecommendedVersion('0', $majorChanges));
+        $this->assertEquals('1.0.0', $this->analyzer->getRecommendedVersion('0', $majorChanges, true));
         
         // Empty version should be treated as 0.0.0
         $this->assertEquals('0.0.1', $this->analyzer->getRecommendedVersion('', $patchChanges));
         $this->assertEquals('0.1.0', $this->analyzer->getRecommendedVersion('', $minorChanges));
-        $this->assertEquals('1.0.0', $this->analyzer->getRecommendedVersion('', $majorChanges));
+        // For pre-1.0.0, major changes become minor unless strict mode is used
+        $this->assertEquals('0.1.0', $this->analyzer->getRecommendedVersion('', $majorChanges));
+        $this->assertEquals('1.0.0', $this->analyzer->getRecommendedVersion('', $majorChanges, true));
     }
 
     public function testMixedSeverityPriorityMajor(): void
@@ -170,5 +174,104 @@ class SemVerAnalyzerTest extends TestCase
         ];
         
         $this->assertEquals(ApiChange::SEVERITY_MINOR, $this->analyzer->analyzeSeverity($changes));
+    }
+
+    public function testPreReleaseVersionBehaviorDefault(): void
+    {
+        // For pre-1.0.0 versions, major changes should be treated as minor by default
+        $majorChanges = [
+            new ApiChange(ApiChange::TYPE_REMOVED, ApiChange::SEVERITY_MAJOR, new MethodElement('test', 'Test'))
+        ];
+        
+        // Test with various pre-1.0.0 versions
+        $this->assertEquals(ApiChange::SEVERITY_MINOR, $this->analyzer->analyzeSeverity($majorChanges, '0.1.0'));
+        $this->assertEquals(ApiChange::SEVERITY_MINOR, $this->analyzer->analyzeSeverity($majorChanges, '0.5.10'));
+        $this->assertEquals(ApiChange::SEVERITY_MINOR, $this->analyzer->analyzeSeverity($majorChanges, '0.0.1'));
+        
+        // Version recommendations should bump minor, not major
+        $this->assertEquals('0.2.0', $this->analyzer->getRecommendedVersion('0.1.0', $majorChanges));
+        $this->assertEquals('0.6.0', $this->analyzer->getRecommendedVersion('0.5.10', $majorChanges));
+        $this->assertEquals('0.1.0', $this->analyzer->getRecommendedVersion('0.0.1', $majorChanges));
+    }
+
+    public function testPreReleaseVersionBehaviorStrictMode(): void
+    {
+        // With strict mode, major changes should remain major even for pre-1.0.0
+        $majorChanges = [
+            new ApiChange(ApiChange::TYPE_REMOVED, ApiChange::SEVERITY_MAJOR, new MethodElement('test', 'Test'))
+        ];
+        
+        // Test with strict mode enabled
+        $this->assertEquals(ApiChange::SEVERITY_MAJOR, $this->analyzer->analyzeSeverity($majorChanges, '0.1.0', true));
+        $this->assertEquals(ApiChange::SEVERITY_MAJOR, $this->analyzer->analyzeSeverity($majorChanges, '0.5.10', true));
+        
+        // Version recommendations should bump to 1.0.0
+        $this->assertEquals('1.0.0', $this->analyzer->getRecommendedVersion('0.1.0', $majorChanges, true));
+        $this->assertEquals('1.0.0', $this->analyzer->getRecommendedVersion('0.5.10', $majorChanges, true));
+    }
+
+    public function testPreReleaseVersionMinorAndPatchUnaffected(): void
+    {
+        // Minor and patch changes should behave the same regardless of version
+        $minorChanges = [
+            new ApiChange(ApiChange::TYPE_ADDED, ApiChange::SEVERITY_MINOR, new MethodElement('test', 'Test'))
+        ];
+        
+        $patchChanges = [
+            new ApiChange(ApiChange::TYPE_MODIFIED, ApiChange::SEVERITY_PATCH, new MethodElement('test', 'Test'))
+        ];
+        
+        // Both strict and non-strict should behave the same for minor/patch
+        $this->assertEquals(ApiChange::SEVERITY_MINOR, $this->analyzer->analyzeSeverity($minorChanges, '0.1.0', false));
+        $this->assertEquals(ApiChange::SEVERITY_MINOR, $this->analyzer->analyzeSeverity($minorChanges, '0.1.0', true));
+        
+        $this->assertEquals(ApiChange::SEVERITY_PATCH, $this->analyzer->analyzeSeverity($patchChanges, '0.1.0', false));
+        $this->assertEquals(ApiChange::SEVERITY_PATCH, $this->analyzer->analyzeSeverity($patchChanges, '0.1.0', true));
+        
+        // Version recommendations should be the same
+        $this->assertEquals('0.2.0', $this->analyzer->getRecommendedVersion('0.1.0', $minorChanges, false));
+        $this->assertEquals('0.2.0', $this->analyzer->getRecommendedVersion('0.1.0', $minorChanges, true));
+        
+        $this->assertEquals('0.1.1', $this->analyzer->getRecommendedVersion('0.1.0', $patchChanges, false));
+        $this->assertEquals('0.1.1', $this->analyzer->getRecommendedVersion('0.1.0', $patchChanges, true));
+    }
+
+    public function testStableVersionsUnaffectedByStrictMode(): void
+    {
+        // Versions >= 1.0.0 should behave the same regardless of strict mode
+        $majorChanges = [
+            new ApiChange(ApiChange::TYPE_REMOVED, ApiChange::SEVERITY_MAJOR, new MethodElement('test', 'Test'))
+        ];
+        
+        // Test with 1.0.0+ versions
+        $this->assertEquals(ApiChange::SEVERITY_MAJOR, $this->analyzer->analyzeSeverity($majorChanges, '1.0.0', false));
+        $this->assertEquals(ApiChange::SEVERITY_MAJOR, $this->analyzer->analyzeSeverity($majorChanges, '1.0.0', true));
+        $this->assertEquals(ApiChange::SEVERITY_MAJOR, $this->analyzer->analyzeSeverity($majorChanges, '2.5.10', false));
+        $this->assertEquals(ApiChange::SEVERITY_MAJOR, $this->analyzer->analyzeSeverity($majorChanges, '2.5.10', true));
+        
+        // Version recommendations should be the same
+        $this->assertEquals('2.0.0', $this->analyzer->getRecommendedVersion('1.0.0', $majorChanges, false));
+        $this->assertEquals('2.0.0', $this->analyzer->getRecommendedVersion('1.0.0', $majorChanges, true));
+        $this->assertEquals('3.0.0', $this->analyzer->getRecommendedVersion('2.5.10', $majorChanges, false));
+        $this->assertEquals('3.0.0', $this->analyzer->getRecommendedVersion('2.5.10', $majorChanges, true));
+    }
+
+    public function testShouldBumpMethodsWithPreReleaseLogic(): void
+    {
+        $majorChanges = [
+            new ApiChange(ApiChange::TYPE_REMOVED, ApiChange::SEVERITY_MAJOR, new MethodElement('test', 'Test'))
+        ];
+        
+        // Pre-1.0.0 behavior: major changes should bump minor instead
+        $this->assertFalse($this->analyzer->shouldBumpMajor($majorChanges, '0.1.0', false));
+        $this->assertTrue($this->analyzer->shouldBumpMinor($majorChanges, '0.1.0', false));
+        
+        // With strict mode: should bump major
+        $this->assertTrue($this->analyzer->shouldBumpMajor($majorChanges, '0.1.0', true));
+        $this->assertFalse($this->analyzer->shouldBumpMinor($majorChanges, '0.1.0', true));
+        
+        // Stable versions: should always bump major
+        $this->assertTrue($this->analyzer->shouldBumpMajor($majorChanges, '1.0.0', false));
+        $this->assertTrue($this->analyzer->shouldBumpMajor($majorChanges, '1.0.0', true));
     }
 }

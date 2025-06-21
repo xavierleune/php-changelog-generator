@@ -52,6 +52,12 @@ class ChangelogCommand extends Command
             )
             ->addOption('format', 'f', InputOption::VALUE_OPTIONAL, 'Output format (markdown, json)', 'markdown')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show changes without writing to file')
+            ->addOption(
+                'strict-semver',
+                null,
+                InputOption::VALUE_NONE,
+                'Use strict SemVer rules (breaking changes = major even for pre-1.0.0)'
+            )
             ->setHelp('This command compares two PHP codebases and generates a changelog with SemVer recommendations.');
     }
 
@@ -66,6 +72,7 @@ class ChangelogCommand extends Command
         $ignorePatterns = $input->getOption('ignore');
         $format = $input->getOption('format');
         $dryRun = $input->getOption('dry-run');
+        $strictSemver = $input->getOption('strict-semver');
 
         if (!is_dir($oldPath)) {
             $io->error("Old path does not exist or is not a directory: {$oldPath}");
@@ -98,8 +105,12 @@ class ChangelogCommand extends Command
             $io->section('Change Analysis');
             $io->text(sprintf('Found %d changes', count($changes)));
 
-            $recommendedVersion = $this->semVerAnalyzer->getRecommendedVersion($currentVersion, $changes);
-            $severity = $this->semVerAnalyzer->analyzeSeverity($changes);
+            $recommendedVersion = $this->semVerAnalyzer->getRecommendedVersion(
+                $currentVersion,
+                $changes,
+                $strictSemver
+            );
+            $severity = $this->semVerAnalyzer->analyzeSeverity($changes, $currentVersion, $strictSemver);
 
             $io->definitionList(
                 ['Current Version' => $currentVersion],

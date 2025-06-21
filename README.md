@@ -41,6 +41,7 @@ Options:
   -i, --ignore=IGNORE   Patterns to ignore (supports wildcards) [default: ["*/vendor/*", "*/tests/*", "*/test/*"]] (multiple values allowed)
   -f, --format=FORMAT   Output format (markdown, json) [default: "markdown"]
       --dry-run         Show changes without writing to file
+      --strict-semver   Use strict SemVer rules (breaking changes = major even for pre-1.0.0)
 ```
 
 ### Examples
@@ -60,6 +61,9 @@ Options:
 
 # Preview without writing to file
 ./bin/changelog-generator ./v1.0.0 ./v1.1.0 --dry-run
+
+# Use strict SemVer for pre-1.0.0 versions
+./bin/changelog-generator ./v0.1.0 ./v0.2.0 --current-version 0.1.0 --strict-semver
 ```
 
 ## SemVer Rules
@@ -80,6 +84,28 @@ Options:
 ### **Patch** Changes
 - PHPDoc modifications without signature impact
 - Internal changes without public API impact
+
+## Pre-1.0.0 SemVer Behavior
+
+**By default**, for versions before 1.0.0 (e.g., 0.x.y), this tool follows a relaxed SemVer approach:
+
+- **Breaking changes** (normally major) are treated as **minor** changes
+- **New features** remain **minor** changes  
+- **Bug fixes** remain **patch** changes
+
+This reflects the common practice that pre-1.0.0 versions are in development and breaking changes are expected.
+
+### Strict SemVer Mode
+
+Use the `--strict-semver` flag to enforce standard SemVer rules even for pre-1.0.0 versions:
+
+```bash
+# Relaxed mode (default): 0.1.0 + breaking changes = 0.2.0
+./bin/changelog-generator ./v0.1.0 ./v0.2.0 --current-version 0.1.0
+
+# Strict mode: 0.1.0 + breaking changes = 1.0.0
+./bin/changelog-generator ./v0.1.0 ./v0.2.0 --current-version 0.1.0 --strict-semver
+```
 
 ## PHPDoc Analysis
 

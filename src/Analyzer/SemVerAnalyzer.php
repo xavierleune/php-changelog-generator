@@ -8,8 +8,11 @@ use Leune\ChangelogGenerator\Model\ApiChange;
 
 class SemVerAnalyzer
 {
-    public function analyzeSeverity(array $changes): string
-    {
+    public function analyzeSeverity(
+        array $changes,
+        string $currentVersion = '1.0.0',
+        bool $strictSemver = false
+    ): string {
         $hasMajor = false;
         $hasMinor = false;
 
@@ -28,7 +31,11 @@ class SemVerAnalyzer
             }
         }
 
+        // Pre-1.0.0 behavior: major changes become minor unless strict mode is enabled
         if ($hasMajor) {
+            if (!$strictSemver && $this->isPreRelease($currentVersion)) {
+                return ApiChange::SEVERITY_MINOR;
+            }
             return ApiChange::SEVERITY_MAJOR;
         }
 
@@ -39,19 +46,19 @@ class SemVerAnalyzer
         return ApiChange::SEVERITY_PATCH;
     }
 
-    public function shouldBumpMajor(array $changes): bool
+    public function shouldBumpMajor(array $changes, string $currentVersion = '1.0.0', bool $strictSemver = false): bool
     {
-        return $this->analyzeSeverity($changes) === ApiChange::SEVERITY_MAJOR;
+        return $this->analyzeSeverity($changes, $currentVersion, $strictSemver) === ApiChange::SEVERITY_MAJOR;
     }
 
-    public function shouldBumpMinor(array $changes): bool
+    public function shouldBumpMinor(array $changes, string $currentVersion = '1.0.0', bool $strictSemver = false): bool
     {
-        return $this->analyzeSeverity($changes) === ApiChange::SEVERITY_MINOR;
+        return $this->analyzeSeverity($changes, $currentVersion, $strictSemver) === ApiChange::SEVERITY_MINOR;
     }
 
-    public function getRecommendedVersion(string $currentVersion, array $changes): string
+    public function getRecommendedVersion(string $currentVersion, array $changes, bool $strictSemver = false): string
     {
-        $severity = $this->analyzeSeverity($changes);
+        $severity = $this->analyzeSeverity($changes, $currentVersion, $strictSemver);
         $versionParts = explode('.', $currentVersion);
 
         $major = (int) ($versionParts[0] ?? 0);
@@ -74,5 +81,13 @@ class SemVerAnalyzer
         }
 
         return "{$major}.{$minor}.{$patch}";
+    }
+
+    private function isPreRelease(string $version): bool
+    {
+        $versionParts = explode('.', $version);
+        $major = (int) ($versionParts[0] ?? 0);
+        
+        return $major === 0;
     }
 }
