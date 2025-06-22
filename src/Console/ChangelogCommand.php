@@ -132,7 +132,18 @@ class ChangelogCommand extends Command
                 $this->displayChangesAnalysis($io, $quiet, $changes, $currentVersion, $recommendedVersion, $severity);
             }
 
-            $this->generateOutput($format, $dryRun, $quiet, $changes, $recommendedVersion, $currentVersion, $severity, $outputFile, $io, $output);
+            $this->generateOutput(
+                $format,
+                $dryRun,
+                $quiet,
+                $changes,
+                $recommendedVersion,
+                $currentVersion,
+                $severity,
+                $outputFile,
+                $io,
+                $output
+            );
             if ($quiet) {
                 $output->writeln($recommendedVersion, OutputInterface::VERBOSITY_QUIET);
             }
