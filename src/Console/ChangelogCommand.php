@@ -67,7 +67,13 @@ class ChangelogCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $oldPath = $input->getArgument('old-path');
+        if (!str_starts_with($oldPath, '/')) {
+            $oldPath = getcwd() . '/' . $oldPath;
+        }
         $newPath = $input->getArgument('new-path');
+        if (!str_starts_with($newPath, '/')) {
+            $newPath = getcwd() . '/' . $newPath;
+        }
         $outputFile = $input->getOption('output');
         $currentVersion = $input->getOption('current-version');
         $ignorePatterns = $input->getOption('ignore');
