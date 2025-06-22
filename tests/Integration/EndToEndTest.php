@@ -41,7 +41,7 @@ class EndToEndTest extends TestCase
         }
     }
 
-    public function testCompleteWorkflowWithNoChanges(): void
+        public function testCompleteWorkflowWithNoChanges(): void
     {
         // Create identical codebases
         $v1Dir = $this->testDataDir . '/v1';
@@ -65,9 +65,10 @@ class EndToEndTest extends TestCase
         $this->assertEquals(ApiChange::SEVERITY_PATCH, $severity);
 
         // Generate changelog
-        $changelog = $this->generator->generate($changes, '1.0.0');
+        $changelog = $this->generator->generate($changes, '1.0.1');
         $this->assertStringNotContainsString('### Added', $changelog);
-        $this->assertStringNotContainsString('### Changed', $changelog);
+        $this->assertStringContainsString('### Changed', $changelog);
+        $this->assertStringContainsString('No API changes detected', $changelog);
         $this->assertStringNotContainsString('### Removed', $changelog);
     }
 

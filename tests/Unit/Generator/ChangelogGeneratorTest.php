@@ -27,7 +27,8 @@ class ChangelogGeneratorTest extends TestCase
         $this->assertStringContainsString('# Changelog', $changelog);
         $this->assertStringContainsString('## [1.0.0] - 2023-01-01', $changelog);
         $this->assertStringNotContainsString('### Added', $changelog);
-        $this->assertStringNotContainsString('### Changed', $changelog);
+        $this->assertStringContainsString('### Changed', $changelog);
+        $this->assertStringContainsString('No API changes detected', $changelog);
         $this->assertStringNotContainsString('### Removed', $changelog);
     }
 

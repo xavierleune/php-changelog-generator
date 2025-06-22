@@ -41,7 +41,7 @@ class ChangelogCommand extends Command
             ->setDescription(self::$defaultDescription)
             ->addArgument('old-path', InputArgument::REQUIRED, 'Path to the old version of the codebase')
             ->addArgument('new-path', InputArgument::REQUIRED, 'Path to the new version of the codebase')
-            ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Output file for the changelog', 'CHANGELOG.md')
+            ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Output file for the changelog (relative from new-path)', 'CHANGELOG.md')
             ->addOption('current-version', 'c', InputOption::VALUE_OPTIONAL, 'Current version number', '1.0.0')
             ->addOption(
                 'ignore',
@@ -74,7 +74,7 @@ class ChangelogCommand extends Command
         if (!str_starts_with($newPath, '/')) {
             $newPath = getcwd() . '/' . $newPath;
         }
-        $outputFile = $input->getOption('output');
+        $outputFile = $newPath . '/' . $input->getOption('output');
         $currentVersion = $input->getOption('current-version');
         $ignorePatterns = $input->getOption('ignore');
         $format = $input->getOption('format');
@@ -118,79 +118,21 @@ class ChangelogCommand extends Command
             }
             $changes = $this->differ->diff($oldSnapshot, $newSnapshot);
 
-            if (empty($changes)) {
-                $io->success('No API changes detected between versions.');
-                return Command::SUCCESS;
-            }
-
-            $io->section('Change Analysis');
-            $io->text(sprintf('Found %d changes', count($changes)));
-
             $recommendedVersion = $this->semVerAnalyzer->getRecommendedVersion(
                 $currentVersion,
                 $changes,
                 $strictSemver
             );
+
             $severity = $this->semVerAnalyzer->analyzeSeverity($changes, $currentVersion, $strictSemver);
 
-            if (!$quiet) {
-                $io->definitionList(
-                    ['Current Version' => $currentVersion],
-                    ['Recommended Version' => $recommendedVersion],
-                    ['Severity' => ucfirst($severity)]
-                );
+            if (empty($changes)) {
+                $this->displayNoChangesMessage($io, $quiet, $currentVersion, $recommendedVersion);
+            } else {
+                $this->displayChangesAnalysis($io, $quiet, $changes, $currentVersion, $recommendedVersion, $severity);
             }
 
-            $changesByType = $this->groupChangesByType($changes);
-
-            if (!$quiet) {
-                if (!empty($changesByType['major'])) {
-                    $io->warning(sprintf('⚠️  %d BREAKING changes detected', count($changesByType['major'])));
-                }
-
-                if (!empty($changesByType['minor'])) {
-                    $io->note(sprintf('ℹ️  %d new features added', count($changesByType['minor'])));
-                }
-
-                if (!empty($changesByType['patch'])) {
-                    $io->text(sprintf('✅ %d patch-level changes', count($changesByType['patch'])));
-                }
-            }
-
-            if ($format === 'markdown') {
-                if ($dryRun) {
-                    if (!$quiet) {
-                        $changelog = $this->generator->generate($changes, $recommendedVersion);
-                        $io->section('Generated Changelog');
-                        $io->text($changelog);
-                    }
-                } else {
-                    $changelog = $this->generator->generateForFile($changes, $recommendedVersion, $outputFile);
-                    file_put_contents($outputFile, $changelog);
-                    $io->success("Changelog written to: {$outputFile}");
-                }
-            } elseif ($format === 'json') {
-                $data = [
-                    'currentVersion' => $currentVersion,
-                    'recommendedVersion' => $recommendedVersion,
-                    'severity' => $severity,
-                    'changes' => $this->serializeChanges($changes),
-                ];
-                
-                $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-                
-                if ($dryRun) {
-                    if (!$quiet) {
-                        $io->section('Generated JSON');
-                        $io->text($json);
-                    }
-                } else {
-                    file_put_contents($outputFile, $json);
-                    if (!$quiet) {
-                        $io->success("JSON report written to: {$outputFile}");
-                    }
-                }
-            }
+            $this->generateOutput($format, $dryRun, $quiet, $changes, $recommendedVersion, $currentVersion, $severity, $outputFile, $io, $output);
             if ($quiet) {
                 $output->writeln($recommendedVersion, OutputInterface::VERBOSITY_QUIET);
             }
@@ -237,5 +179,96 @@ class ChangelogCommand extends Command
                 ],
             ];
         }, $changes);
+    }
+
+    private function displayNoChangesMessage(SymfonyStyle $io, bool $quiet, string $currentVersion, string $recommendedVersion): void
+    {
+        if (!$quiet) {
+            $io->success('No API changes detected between versions.');
+            $io->definitionList(
+                ['Current Version' => $currentVersion],
+                ['Recommended Version' => $recommendedVersion],
+                ['Severity' => 'Patch']
+            );
+        }
+    }
+
+    private function displayChangesAnalysis(SymfonyStyle $io, bool $quiet, array $changes, string $currentVersion, string $recommendedVersion, string $severity): void
+    {
+        if (!$quiet) {
+            $io->section('Change Analysis');
+            $io->text(sprintf('Found %d changes', count($changes)));
+            
+            $io->definitionList(
+                ['Current Version' => $currentVersion],
+                ['Recommended Version' => $recommendedVersion],
+                ['Severity' => ucfirst($severity)]
+            );
+
+            $changesByType = $this->groupChangesByType($changes);
+            
+            if (!empty($changesByType['major'])) {
+                $io->warning(sprintf('⚠️  %d BREAKING changes detected', count($changesByType['major'])));
+            }
+            
+            if (!empty($changesByType['minor'])) {
+                $io->note(sprintf('ℹ️  %d new features added', count($changesByType['minor'])));
+            }
+            
+            if (!empty($changesByType['patch'])) {
+                $io->text(sprintf('✅ %d patch-level changes', count($changesByType['patch'])));
+            }
+        }
+    }
+
+    private function generateOutput(string $format, bool $dryRun, bool $quiet, array $changes, string $recommendedVersion, string $currentVersion, string $severity, string $outputFile, SymfonyStyle $io, OutputInterface $output): void
+    {
+        if ($format === 'markdown') {
+            $this->generateMarkdownOutput($dryRun, $quiet, $changes, $recommendedVersion, $outputFile, $io);
+        } elseif ($format === 'json') {
+            $this->generateJsonOutput($dryRun, $quiet, $changes, $recommendedVersion, $currentVersion, $severity, $outputFile, $io);
+        }
+    }
+
+    private function generateMarkdownOutput(bool $dryRun, bool $quiet, array $changes, string $recommendedVersion, string $outputFile, SymfonyStyle $io): void
+    {
+        if ($dryRun) {
+            if (!$quiet) {
+                $changelog = $this->generator->generate($changes, $recommendedVersion);
+                $io->section('Generated Changelog');
+                $io->text($changelog);
+            }
+        } else {
+            $changelog = $this->generator->generateForFile($changes, $recommendedVersion, $outputFile);
+
+            file_put_contents($outputFile, $changelog);
+            if (!$quiet) {
+                $io->success("Changelog written to: {$outputFile}");
+            }
+        }
+    }
+
+    private function generateJsonOutput(bool $dryRun, bool $quiet, array $changes, string $recommendedVersion, string $currentVersion, string $severity, string $outputFile, SymfonyStyle $io): void
+    {
+        $data = [
+            'currentVersion' => $currentVersion,
+            'recommendedVersion' => $recommendedVersion,
+            'severity' => $severity,
+            'changes' => $this->serializeChanges($changes),
+        ];
+        
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        
+        if ($dryRun) {
+            if (!$quiet) {
+                $io->section('Generated JSON');
+                $io->text($json);
+            }
+        } else {
+            file_put_contents($outputFile, $json);
+            if (!$quiet) {
+                $io->success("JSON report written to: {$outputFile}");
+            }
+        }
     }
 }

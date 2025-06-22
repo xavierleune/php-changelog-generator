@@ -80,6 +80,12 @@ class ChangelogGenerator
             $entry .= "\n";
         }
 
+        // If no changes were found, add a note
+        if (empty($changes)) {
+            $entry .= "### Changed\n\n";
+            $entry .= "- 🟢 **maintenance**: No API changes detected\n\n";
+        }
+
         return $entry;
     }
 
