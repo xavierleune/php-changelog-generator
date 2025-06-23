@@ -14,11 +14,12 @@ use Leune\ChangelogGenerator\Analyzer\SemVerAnalyzer;
 use Leune\ChangelogGenerator\Differ\ApiDiffer;
 use Leune\ChangelogGenerator\Generator\ChangelogGenerator;
 use Leune\ChangelogGenerator\Parser\PhpParser;
+use Throwable;
 
 class ChangelogCommand extends Command
 {
-    protected static $defaultName = 'changelog:generate';
-    protected static $defaultDescription = 'Generate changelog by comparing two PHP codebases';
+    protected static string $defaultName = 'changelog:generate';
+    protected static string $defaultDescription = 'Generate changelog by comparing two PHP codebases';
 
     private PhpParser $parser;
     private ApiDiffer $differ;
@@ -41,7 +42,13 @@ class ChangelogCommand extends Command
             ->setDescription(self::$defaultDescription)
             ->addArgument('old-path', InputArgument::REQUIRED, 'Path to the old version of the codebase')
             ->addArgument('new-path', InputArgument::REQUIRED, 'Path to the new version of the codebase')
-            ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Output file for the changelog (relative from new-path)', 'CHANGELOG.md')
+            ->addOption(
+                'output',
+                'o',
+                InputOption::VALUE_OPTIONAL,
+                'Output file for the changelog (relative from new-path)',
+                'CHANGELOG.md'
+            )
             ->addOption('current-version', 'c', InputOption::VALUE_OPTIONAL, 'Current version number', '1.0.0')
             ->addOption(
                 'ignore',
@@ -52,6 +59,12 @@ class ChangelogCommand extends Command
             )
             ->addOption('format', 'f', InputOption::VALUE_OPTIONAL, 'Output format (markdown, json)', 'markdown')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Show changes without writing to file')
+            ->addOption(
+                'no-empty-changeset',
+                null,
+                InputOption::VALUE_NONE,
+                'If no changes are detected, do not generate a changelog entry and recommend the same version'
+            )
             ->addOption(
                 'strict-semver',
                 null,
@@ -83,7 +96,7 @@ class ChangelogCommand extends Command
 
         if (!is_dir($oldPath)) {
             $output->writeln(
-                "<error>Old path does not exist or is not a directory: {$oldPath}</error>",
+                "<error>Old path does not exist or is not a directory: $oldPath</error>",
                 OutputInterface::VERBOSITY_QUIET
             );
             return Command::FAILURE;
@@ -91,7 +104,7 @@ class ChangelogCommand extends Command
 
         if (!is_dir($newPath)) {
             $output->writeln(
-                "<error>New path does not exist or is not a directory: {$newPath}</error>",
+                "<error>New path does not exist or is not a directory: $newPath</error>",
                 OutputInterface::VERBOSITY_QUIET
             );
             return Command::FAILURE;
@@ -124,6 +137,10 @@ class ChangelogCommand extends Command
                 $strictSemver
             );
 
+            if (empty($changes) && $input->getOption('no-empty-changeset')) {
+                $recommendedVersion = $currentVersion;
+            }
+
             $severity = $this->semVerAnalyzer->analyzeSeverity($changes, $currentVersion, $strictSemver);
 
             if (empty($changes)) {
@@ -132,23 +149,24 @@ class ChangelogCommand extends Command
                 $this->displayChangesAnalysis($io, $quiet, $changes, $currentVersion, $recommendedVersion, $severity);
             }
 
-            $this->generateOutput(
-                $format,
-                $dryRun,
-                $quiet,
-                $changes,
-                $recommendedVersion,
-                $currentVersion,
-                $severity,
-                $outputFile,
-                $io,
-                $output
-            );
+            if (!empty($changes) || !$input->getOption('no-empty-changeset')) {
+                $this->generateOutput(
+                    $format,
+                    $dryRun,
+                    $quiet,
+                    $changes,
+                    $recommendedVersion,
+                    $currentVersion,
+                    $severity,
+                    $outputFile,
+                    $io
+                );
+            }
             if ($quiet) {
                 $output->writeln($recommendedVersion, OutputInterface::VERBOSITY_QUIET);
             }
             return Command::SUCCESS;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $output->writeln(
                 '<error>An error occured: ' . $e->getMessage() . '</error>',
                 OutputInterface::VERBOSITY_QUIET
@@ -192,8 +210,12 @@ class ChangelogCommand extends Command
         }, $changes);
     }
 
-    private function displayNoChangesMessage(SymfonyStyle $io, bool $quiet, string $currentVersion, string $recommendedVersion): void
-    {
+    private function displayNoChangesMessage(
+        SymfonyStyle $io,
+        bool $quiet,
+        string $currentVersion,
+        string $recommendedVersion
+    ): void {
         if (!$quiet) {
             $io->success('No API changes detected between versions.');
             $io->definitionList(
@@ -204,8 +226,14 @@ class ChangelogCommand extends Command
         }
     }
 
-    private function displayChangesAnalysis(SymfonyStyle $io, bool $quiet, array $changes, string $currentVersion, string $recommendedVersion, string $severity): void
-    {
+    private function displayChangesAnalysis(
+        SymfonyStyle $io,
+        bool $quiet,
+        array $changes,
+        string $currentVersion,
+        string $recommendedVersion,
+        string $severity
+    ): void {
         if (!$quiet) {
             $io->section('Change Analysis');
             $io->text(sprintf('Found %d changes', count($changes)));
@@ -232,17 +260,41 @@ class ChangelogCommand extends Command
         }
     }
 
-    private function generateOutput(string $format, bool $dryRun, bool $quiet, array $changes, string $recommendedVersion, string $currentVersion, string $severity, string $outputFile, SymfonyStyle $io, OutputInterface $output): void
-    {
+    private function generateOutput(
+        string $format,
+        bool $dryRun,
+        bool $quiet,
+        array $changes,
+        string $recommendedVersion,
+        string $currentVersion,
+        string $severity,
+        string $outputFile,
+        SymfonyStyle $io
+    ): void {
         if ($format === 'markdown') {
             $this->generateMarkdownOutput($dryRun, $quiet, $changes, $recommendedVersion, $outputFile, $io);
         } elseif ($format === 'json') {
-            $this->generateJsonOutput($dryRun, $quiet, $changes, $recommendedVersion, $currentVersion, $severity, $outputFile, $io);
+            $this->generateJsonOutput(
+                $dryRun,
+                $quiet,
+                $changes,
+                $recommendedVersion,
+                $currentVersion,
+                $severity,
+                $outputFile,
+                $io
+            );
         }
     }
 
-    private function generateMarkdownOutput(bool $dryRun, bool $quiet, array $changes, string $recommendedVersion, string $outputFile, SymfonyStyle $io): void
-    {
+    private function generateMarkdownOutput(
+        bool $dryRun,
+        bool $quiet,
+        array $changes,
+        string $recommendedVersion,
+        string $outputFile,
+        SymfonyStyle $io
+    ): void {
         if ($dryRun) {
             if (!$quiet) {
                 $changelog = $this->generator->generate($changes, $recommendedVersion);
@@ -254,13 +306,21 @@ class ChangelogCommand extends Command
 
             file_put_contents($outputFile, $changelog);
             if (!$quiet) {
-                $io->success("Changelog written to: {$outputFile}");
+                $io->success("Changelog written to: $outputFile");
             }
         }
     }
 
-    private function generateJsonOutput(bool $dryRun, bool $quiet, array $changes, string $recommendedVersion, string $currentVersion, string $severity, string $outputFile, SymfonyStyle $io): void
-    {
+    private function generateJsonOutput(
+        bool $dryRun,
+        bool $quiet,
+        array $changes,
+        string $recommendedVersion,
+        string $currentVersion,
+        string $severity,
+        string $outputFile,
+        SymfonyStyle $io
+    ): void {
         $data = [
             'currentVersion' => $currentVersion,
             'recommendedVersion' => $recommendedVersion,
@@ -278,7 +338,7 @@ class ChangelogCommand extends Command
         } else {
             file_put_contents($outputFile, $json);
             if (!$quiet) {
-                $io->success("JSON report written to: {$outputFile}");
+                $io->success("JSON report written to: $outputFile");
             }
         }
     }
