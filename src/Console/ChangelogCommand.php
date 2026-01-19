@@ -160,7 +160,7 @@ class ChangelogCommand extends Command
 
             if (empty($changes) && empty($fileChanges)) {
                 $this->displayNoChangesMessage($io, $quiet, $currentVersion, $recommendedVersion);
-            } elseif (empty($changes) && !empty($fileChanges)) {
+            } elseif (empty($changes) && count($fileChanges) > 0) {
                 $this->displayInternalChangesOnly($io, $quiet, $fileChanges, $currentVersion, $recommendedVersion);
             } else {
                 $this->displayChangesAnalysis(
