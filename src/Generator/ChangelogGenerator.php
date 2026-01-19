@@ -62,8 +62,15 @@ class ChangelogGenerator
      * @param ApiChange[] $changes
      * @param FileChange[] $fileChanges
      */
-    private function generateVersionEntry(array $changes, string $version, string $date, array $fileChanges = []): string
-    {
+    private function generateVersionEntry(
+        array $changes,
+        string
+        $version,
+        string
+        $date,
+        array
+        $fileChanges = []
+    ): string {
         $entry = "## [{$version}] - {$date}\n\n";
         $grouped = $this->groupChangesByType($changes);
 

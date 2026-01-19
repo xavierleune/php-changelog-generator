@@ -301,7 +301,12 @@ class ChangelogCommand extends Command
         if (!$quiet) {
             $io->section('Change Analysis');
             $totalChanges = count($changes) + count($fileChanges);
-            $io->text(sprintf('Found %d changes (%d API, %d internal)', $totalChanges, count($changes), count($fileChanges)));
+            $io->text(sprintf(
+                'Found %d changes (%d API, %d internal)',
+                $totalChanges,
+                count($changes),
+                count($fileChanges)
+            ));
 
             $io->definitionList(
                 ['Current Version' => $currentVersion],
@@ -342,7 +347,15 @@ class ChangelogCommand extends Command
         SymfonyStyle $io
     ): void {
         if ($format === 'markdown') {
-            $this->generateMarkdownOutput($dryRun, $quiet, $changes, $fileChanges, $recommendedVersion, $outputFile, $io);
+            $this->generateMarkdownOutput(
+                $dryRun,
+                $quiet,
+                $changes,
+                $fileChanges,
+                $recommendedVersion,
+                $outputFile,
+                $io
+            );
         } elseif ($format === 'json') {
             $this->generateJsonOutput(
                 $dryRun,
@@ -374,7 +387,13 @@ class ChangelogCommand extends Command
                 $io->text($changelog);
             }
         } else {
-            $changelog = $this->generator->generateForFile($changes, $recommendedVersion, $outputFile, null, $fileChanges);
+            $changelog = $this->generator->generateForFile(
+                $changes,
+                $recommendedVersion,
+                $outputFile,
+                null,
+                $fileChanges
+            );
 
             file_put_contents($outputFile, $changelog);
             if (!$quiet) {
