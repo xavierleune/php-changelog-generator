@@ -6,12 +6,24 @@ namespace Leune\ChangelogGenerator\Model;
 
 abstract class ApiElement
 {
+    protected ?string $sourceFile = null;
+
     public function __construct(
         protected string $name,
         protected string $namespace,
         protected array $signature = [],
         protected ?string $docComment = null
     ) {
+    }
+
+    public function setSourceFile(string $sourceFile): void
+    {
+        $this->sourceFile = $sourceFile;
+    }
+
+    public function getSourceFile(): ?string
+    {
+        return $this->sourceFile;
     }
 
     public function getName(): string

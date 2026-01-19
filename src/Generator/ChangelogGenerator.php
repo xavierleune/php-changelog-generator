@@ -5,38 +5,46 @@ declare(strict_types=1);
 namespace Leune\ChangelogGenerator\Generator;
 
 use Leune\ChangelogGenerator\Model\ApiChange;
+use Leune\ChangelogGenerator\Model\FileChange;
 
 class ChangelogGenerator
 {
-    public function generate(array $changes, string $version, ?string $date = null): string
+    /**
+     * @param ApiChange[] $changes
+     * @param FileChange[] $fileChanges
+     */
+    public function generate(array $changes, string $version, ?string $date = null, array $fileChanges = []): string
     {
         $date = $date ?? date('Y-m-d');
-        $newEntry = $this->generateVersionEntry($changes, $version, $date);
-        
+        $newEntry = $this->generateVersionEntry($changes, $version, $date, $fileChanges);
+
         return "# Changelog\n\n" . $newEntry;
     }
 
-    public function generateForFile(array $changes, string $version, string $outputFile, ?string $date = null): string
-    {
+    /**
+     * @param ApiChange[] $changes
+     * @param FileChange[] $fileChanges
+     */
+    public function generateForFile(
+        array $changes,
+        string $version,
+        string $outputFile,
+        ?string $date = null,
+        array $fileChanges = []
+    ): string {
         $date = $date ?? date('Y-m-d');
-        $newEntry = $this->generateVersionEntry($changes, $version, $date);
-        
+        $newEntry = $this->generateVersionEntry($changes, $version, $date, $fileChanges);
+
         if (!file_exists($outputFile)) {
-            // Create new file with title and new entry
             return "# Changelog\n\n" . $newEntry;
         }
-        
-        // File exists, insert after title
+
         $existingContent = file_get_contents($outputFile);
-        
-        // Find the title line and insert after it
         $lines = explode("\n", $existingContent);
         $insertIndex = 0;
-        
-        // Find where to insert (after # Changelog title and any empty lines)
+
         for ($i = 0; $i < count($lines); $i++) {
             if (preg_match('/^#\s+Changelog/i', trim($lines[$i]))) {
-                // Found the title, skip any following empty lines
                 $insertIndex = $i + 1;
                 while ($insertIndex < count($lines) && trim($lines[$insertIndex]) === '') {
                     $insertIndex++;
@@ -44,14 +52,17 @@ class ChangelogGenerator
                 break;
             }
         }
-        
-        // Insert the new entry
+
         array_splice($lines, $insertIndex, 0, [$newEntry]);
-        
+
         return implode("\n", $lines);
     }
 
-    private function generateVersionEntry(array $changes, string $version, string $date): string
+    /**
+     * @param ApiChange[] $changes
+     * @param FileChange[] $fileChanges
+     */
+    private function generateVersionEntry(array $changes, string $version, string $date, array $fileChanges = []): string
     {
         $entry = "## [{$version}] - {$date}\n\n";
         $grouped = $this->groupChangesByType($changes);
@@ -80,13 +91,26 @@ class ChangelogGenerator
             $entry .= "\n";
         }
 
-        // If no changes were found, add a note
-        if (empty($changes)) {
+        if (!empty($fileChanges)) {
+            $entry .= "### Internal Changes\n\n";
+            foreach ($fileChanges as $fileChange) {
+                $entry .= $this->formatFileChange($fileChange);
+            }
+            $entry .= "\n";
+        }
+
+        if (empty($changes) && empty($fileChanges)) {
             $entry .= "### Changed\n\n";
             $entry .= "- 🟢 **maintenance**: No API changes detected\n\n";
         }
 
         return $entry;
+    }
+
+    private function formatFileChange(FileChange $fileChange): string
+    {
+        $path = $fileChange->getRelativePath();
+        return "- 🟢 **file** `{$path}`: Implementation modified (no API change)\n";
     }
 
     private function groupChangesByType(array $changes): array

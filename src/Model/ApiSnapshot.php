@@ -10,6 +10,7 @@ class ApiSnapshot
     private array $interfaces = [];
     private array $functions = [];
     private array $constants = [];
+    private array $fileChecksums = [];
 
     public function addClass(ClassElement $class): void
     {
@@ -59,5 +60,15 @@ class ApiSnapshot
             $this->functions,
             $this->constants
         );
+    }
+
+    public function addFileChecksum(string $relativePath, string $checksum): void
+    {
+        $this->fileChecksums[$relativePath] = $checksum;
+    }
+
+    public function getFileChecksums(): array
+    {
+        return $this->fileChecksums;
     }
 }

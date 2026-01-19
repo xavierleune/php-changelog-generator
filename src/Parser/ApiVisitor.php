@@ -88,6 +88,7 @@ class ApiVisitor extends NodeVisitorAbstract
             $implements,
             $node->getDocComment()?->getText()
         );
+        $this->currentClass->setSourceFile($this->currentFile);
 
         $this->snapshot->addClass($this->currentClass);
     }
@@ -105,6 +106,7 @@ class ApiVisitor extends NodeVisitorAbstract
             $extends,
             $node->getDocComment()?->getText()
         );
+        $this->currentInterface->setSourceFile($this->currentFile);
 
         $this->snapshot->addInterface($this->currentInterface);
     }
@@ -157,6 +159,7 @@ class ApiVisitor extends NodeVisitorAbstract
             $returnType,
             $node->getDocComment()?->getText()
         );
+        $function->setSourceFile($this->currentFile);
 
         $this->snapshot->addFunction($function);
     }
@@ -207,6 +210,7 @@ class ApiVisitor extends NodeVisitorAbstract
                 null,
                 $node->getDocComment()?->getText()
             );
+            $constant->setSourceFile($this->currentFile);
 
             $this->snapshot->addConstant($constant);
         }

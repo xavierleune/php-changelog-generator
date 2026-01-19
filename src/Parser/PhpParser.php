@@ -30,6 +30,7 @@ class PhpParser
     {
         $snapshot = new ApiSnapshot();
         $visitor = new ApiVisitor($snapshot, $this->phpDocParser);
+        $basePath = rtrim(realpath($path), '/') . '/';
 
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS)
@@ -40,10 +41,36 @@ class PhpParser
                 continue;
             }
 
-            $this->parseFile($file->getPathname(), $visitor);
+            $filePath = $file->getPathname();
+            $relativePath = $this->getRelativePath($filePath, $basePath);
+            $checksum = $this->calculateChecksum($filePath);
+
+            if ($checksum !== null) {
+                $snapshot->addFileChecksum($relativePath, $checksum);
+            }
+
+            $this->parseFile($filePath, $visitor, $relativePath);
         }
 
         return $snapshot;
+    }
+
+    private function getRelativePath(string $filePath, string $basePath): string
+    {
+        $realPath = realpath($filePath);
+        if ($realPath && str_starts_with($realPath, $basePath)) {
+            return substr($realPath, strlen($basePath));
+        }
+        return $filePath;
+    }
+
+    private function calculateChecksum(string $filePath): ?string
+    {
+        $content = file_get_contents($filePath);
+        if ($content === false) {
+            return null;
+        }
+        return md5($content);
     }
 
     private function shouldProcessFile(SplFileInfo $file, array $ignorePatterns): bool
@@ -62,7 +89,7 @@ class PhpParser
         return true;
     }
 
-    private function parseFile(string $filePath, ApiVisitor $visitor): void
+    private function parseFile(string $filePath, ApiVisitor $visitor, string $relativePath): void
     {
         $code = file_get_contents($filePath);
         if ($code === false) {
@@ -75,7 +102,7 @@ class PhpParser
                 return;
             }
 
-            $visitor->setCurrentFile($filePath);
+            $visitor->setCurrentFile($relativePath);
             $traverser = new NodeTraverser();
             $traverser->addVisitor($visitor);
             $traverser->traverse($ast);
